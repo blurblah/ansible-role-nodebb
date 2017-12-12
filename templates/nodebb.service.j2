@@ -1,0 +1,16 @@
+[Unit]
+Description=NodeBB
+Documentation=https://docs.nodebb.org
+After=system.slice multi-user.target mongod.service
+
+[Service]
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=nodebb
+
+WorkingDirectory=/opt/nodebb
+ExecStart=/usr/bin/env node loader.js --no-silent --no-daemon
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,113 @@
+---
+- import_tasks: check_system.yml
+- import_tasks: check_variables.yml
+
+# Add swap space
+- name: Check swapfile
+  stat:
+    path: /swapfile
+  register: swap
+
+- debug:
+    msg: "Registered: {{ swap.stat.exists }}"
+
+- name: Create a swap file
+  shell: |
+    fallocate -l 2G /swapfile
+    chmod 600 /swapfile
+    mkswap /swapfile
+    swapon /swapfile
+    cp /etc/fstab /etc/fstab.bak
+    echo '/swapfile none swap sw 0 0' | tee -a /etc/fstab
+  when: swap is undefined or swap.stat.exists == False
+
+# Install node.js
+- name: Add node.js repository
+  shell: curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -
+
+- name: Install node.js 6.x
+  apt:
+    update_cache: yes
+    name: nodejs
+
+# Install mongodb
+- name: Add mongo repository key
+  apt_key:
+    keyserver: hkp://keyserver.ubuntu.com:80
+    id: EA312927
+
+- name: Add mongo repository list
+  apt_repository:
+    repo: "deb http://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/3.2 multiverse"
+    filename: mongodb-org-3.2
+
+- name: Install mongodb
+  apt:
+    update_cache: yes
+    name: mongodb-org
+
+- name: Start mongodb
+  systemd:
+    name: mongod
+    state: restarted
+    enabled: yes
+
+# Add mongo accounts
+- name: Install pymongo
+  shell: pip install pymongo
+
+- name: Add admin account
+  mongodb_user:
+    database: admin
+    login_user: "{{ admin_user }}"
+    login_password: "{{ admin_password }}"
+    name: "{{ admin_user }}"
+    password: "{{ admin_password }}"
+    roles:
+      - { db: admin, role: readWriteAnyDatabase }
+      - { db: admin, role: userAdminAnyDatabase }
+
+- name: Add nodebb account
+  mongodb_user:
+    database: nodebb
+    login_user: "{{ admin_user }}"
+    login_password: "{{ admin_password }}"
+    name: "{{ nodebb_user }}"
+    password: "{{ nodebb_password }}"
+    roles:
+      - { db: nodebb, role: readWrite }
+      - { db: admin, role: clusterMonitor }
+
+- name: Enable mongo authorization
+  replace:
+    path: /etc/mongod.conf
+    regexp: '^#security:'
+    replace: 'security:\n  authorization: enabled'
+    backup: yes
+
+- name: Restart mongodb
+  systemd:
+    name: mongod
+    state: restarted
+    enabled: yes
+
+# Install and start nodebb
+- name: Clone nodebb
+  shell: test -e /opt/nodebb || git clone -b v1.6.x https://github.com/NodeBB/NodeBB.git /opt/nodebb
+
+- name: Install dependencies
+  shell: |
+    cd /opt/nodebb
+    npm install
+
+- name: Create nodebb.service file
+  template:
+    src: nodebb.service.j2
+    dest: /etc/systemd/system/nodebb.service
+
+- name: Start nodebb
+  systemd:
+    name: nodebb
+    state: restarted
+    daemon_reload: yes
+    enabled: yes

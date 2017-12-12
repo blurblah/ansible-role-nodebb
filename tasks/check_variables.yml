@@ -1,0 +1,10 @@
+---
+- name: Check mongo admin accounts variables
+  fail:
+    msg: Undefined variable admin_user or admin_password
+  when: admin_user is undefined or admin_password is undefined
+
+- name: Check mongo nodebb accounts variables
+  fail:
+    msg: Undefined variable nodebb_user or nodebb_password
+  when: nodebb_user is undefined or nodebb_password is undefined

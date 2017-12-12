@@ -1,0 +1,17 @@
+---
+- name: check unsupported system
+  fail:
+    msg: "Not supported {{ ansible_system }}"
+  when: ansible_system != 'Linux'
+
+# check ubuntu
+- name: check distribution
+  fail:
+    msg: "Not supported {{ ansible_distribution }}"
+  when: ansible_distribution != 'Ubuntu'
+
+# check 16.04
+- name: check distribution version
+  fail:
+    msg: "Not supported {{ ansible_distribution }} {{ ansible_distribution_version }}"
+  when: ansible_distribution_version != '16.04'
