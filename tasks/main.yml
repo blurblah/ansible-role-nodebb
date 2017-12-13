@@ -56,7 +56,17 @@
 - name: Install pymongo
   shell: pip install pymongo
 
-- name: Add admin account
+- name: Read mongod.conf
+  shell: cat /etc/mongod.conf | grep 'authorization\:\ enabled'
+  #shell: cat /etc/mongod.conf | grep '#security\:'
+  #shell: cat /etc/mongod.conf | grep 'port\:\ 27018'
+  register: mongo_auth_enabled
+  ignore_errors: yes
+
+- debug:
+    msg: "{{ mongo_auth_enabled }}"
+
+- name: Add admin account with login
   mongodb_user:
     database: admin
     login_user: "{{ admin_user }}"
@@ -66,6 +76,17 @@
     roles:
       - { db: admin, role: readWriteAnyDatabase }
       - { db: admin, role: userAdminAnyDatabase }
+  when: mongo_auth_enabled.rc == 0
+
+- name: Add admin account without login
+  mongodb_user:
+    database: admin
+    name: "{{ admin_user }}"
+    password: "{{ admin_password }}"
+    roles:
+      - { db: admin, role: readWriteAnyDatabase }
+      - { db: admin, role: userAdminAnyDatabase }
+  when: mongo_auth_enabled.rc != 0
 
 - name: Add nodebb account
   mongodb_user:
@@ -95,10 +116,22 @@
 - name: Clone nodebb
   shell: test -e /opt/nodebb || git clone -b v1.6.x https://github.com/NodeBB/NodeBB.git /opt/nodebb
 
+- name: Check config.json of nodebb
+  stat:
+    path: /opt/nodebb/config.json
+  register: nodebb_config
+
 - name: Install dependencies
   shell: |
     cd /opt/nodebb
     npm install
+  when: nodebb_config is undefined or nodebb_config.stat.exists == False
+
+- name: Change nodebb url
+  lineinfile:
+    path: /opt/nodebb/config.json
+    regexp: '^    "url":'
+    line: '    "url": "http://{{ ansible_host }}:4567",'
 
 - name: Create nodebb.service file
   template:
