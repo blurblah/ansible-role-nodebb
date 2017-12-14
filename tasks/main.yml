@@ -127,16 +127,12 @@
     npm install
   when: nodebb_config is undefined or nodebb_config.stat.exists == False
 
-- name: Change nodebb url
-  lineinfile:
-    path: /opt/nodebb/config.json
-    regexp: '^    "url":'
-    line: '    "url": "http://{{ ansible_host }}:4567",'
-
 - name: Create nodebb.service file
   template:
     src: nodebb.service.j2
     dest: /etc/systemd/system/nodebb.service
+
+- include_tasks: change_config.yml
 
 - name: Start nodebb
   systemd:

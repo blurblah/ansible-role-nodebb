@@ -1,0 +1,6 @@
+---
+- name: Change nodebb url
+  lineinfile:
+    path: /opt/nodebb/config.json
+    regexp: '^    "url":'
+    line: '    "url": "http://{{ ansible_host }}:4567",'
