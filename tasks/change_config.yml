@@ -3,4 +3,4 @@
   lineinfile:
     path: /opt/nodebb/config.json
     regexp: '^    "url":'
-    line: '    "url": "http://{{ ansible_host }}:4567",'
+    line: '    "url":"http://127.0.0.1:4567/community","socket.io":{"origins":"*:*"},'
